@@ -1,0 +1,19 @@
+# Required Arduino Libraries for ESP32 BLE Controller
+# Install these libraries through the Arduino IDE Library Manager or PlatformIO
+
+# Core ESP32 libraries (usually included with ESP32 board package)
+WiFi
+WebServer
+SPIFFS
+
+# Additional libraries to install:
+ArduinoJson@6.21.3
+ESPAsyncWebServer@1.2.3
+AsyncTCP@1.1.1
+
+# BLE libraries are included with ESP32 core:
+# - BLEDevice
+# - BLEUtils  
+# - BLEScan
+# - BLEAdvertisedDevice
+# - BLEClient

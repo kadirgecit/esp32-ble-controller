@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ESP32 BLE Controller</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>ESP32 BLE Controller</h1>
+            <div class="status-bar">
+                <span id="connection-status" class="status disconnected">Disconnected</span>
+                <span id="scan-status" class="status">Ready</span>
+            </div>
+        </header>
+
+        <div class="tabs">
+            <button class="tab-button active" onclick="openTab(event, 'scan-tab')">Scan & Connect</button>
+            <button class="tab-button" onclick="openTab(event, 'devices-tab')">Saved Devices</button>
+            <button class="tab-button" onclick="openTab(event, 'commands-tab')">Commands</button>
+            <button class="tab-button" onclick="openTab(event, 'services-tab')">Services</button>
+        </div>
+
+        <!-- Scan & Connect Tab -->
+        <div id="scan-tab" class="tab-content active">
+            <div class="control-panel">
+                <button id="scan-btn" onclick="startScan()">Start Scan</button>
+                <button id="stop-scan-btn" onclick="stopScan()" disabled>Stop Scan</button>
+                <button id="disconnect-btn" onclick="disconnect()" disabled>Disconnect</button>
+            </div>
+            
+            <div class="device-list">
+                <h3>Discovered Devices</h3>
+                <div id="discovered-devices"></div>
+            </div>
+        </div>
+
+        <!-- Saved Devices Tab -->
+        <div id="devices-tab" class="tab-content">
+            <div class="control-panel">
+                <button onclick="loadSavedDevices()">Refresh</button>
+            </div>
+            
+            <div class="device-list">
+                <h3>Saved Devices</h3>
+                <div id="saved-devices"></div>
+            </div>
+        </div>
+
+        <!-- Commands Tab -->
+        <div id="commands-tab" class="tab-content">
+            <div class="command-form">
+                <h3>Send Command</h3>
+                <form id="command-form">
+                    <div class="form-group">
+                        <label for="service-uuid">Service UUID:</label>
+                        <input type="text" id="service-uuid" placeholder="e.g., 12345678-1234-1234-1234-123456789abc" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="characteristic-uuid">Characteristic UUID:</label>
+                        <input type="text" id="characteristic-uuid" placeholder="e.g., 87654321-4321-4321-4321-cba987654321" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="command-data">Data (hex or string):</label>
+                        <input type="text" id="command-data" placeholder="e.g., 01FF or Hello" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="command-name">Save as (optional):</label>
+                        <input type="text" id="command-name" placeholder="Command name">
+                    </div>
+                    
+                    <button type="submit">Send Command</button>
+                </form>
+            </div>
+            
+            <div class="saved-commands">
+                <h3>Saved Commands</h3>
+                <div id="saved-commands-list"></div>
+            </div>
+        </div>
+
+        <!-- Services Tab -->
+        <div id="services-tab" class="tab-content">
+            <div class="control-panel">
+                <button onclick="loadServices()">Load Services</button>
+            </div>
+            
+            <div class="services-list">
+                <h3>Device Services & Characteristics</h3>
+                <div id="services-list"></div>
+            </div>
+        </div>
+
+        <!-- Log Panel -->
+        <div class="log-panel">
+            <h3>Activity Log</h3>
+            <div id="log-content"></div>
+            <button onclick="clearLog()">Clear Log</button>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-content">
+            <p>ESP32 BLE Controller - Created by <strong>Kadir Gecit</strong></p>
+            <p>
+                <a href="https://github.com/kadirgecit/esp32-ble-controller" target="_blank" rel="noopener noreferrer">
+                    🌟 Star on GitHub
+                </a>
+                |
+                <a href="https://github.com/kadirgecit/esp32-ble-controller/issues" target="_blank" rel="noopener noreferrer">
+                    🐛 Report Issues
+                </a>
+                |
+                <a href="https://github.com/kadirgecit/esp32-ble-controller/blob/master/README.md" target="_blank" rel="noopener noreferrer">
+                    📖 Documentation
+                </a>
+            </p>
+            <p class="footer-version">v1.0.0 - Open Source MIT License</p>
+        </div>
+    </footer>
+
+    <!-- Modal for device details -->
+    <div id="device-modal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal()">&times;</span>
+            <h2>Device Details</h2>
+            <div id="device-details"></div>
+            <div class="modal-actions">
+                <button id="connect-device-btn" onclick="connectToSelectedDevice()">Connect</button>
+                <button id="save-device-btn" onclick="saveSelectedDevice()">Save Device</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
