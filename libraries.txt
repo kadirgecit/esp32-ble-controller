@@ -5,6 +5,8 @@
 WiFi
 WebServer
 SPIFFS
+DNSServer
+Preferences
 
 # Additional libraries to install:
 ArduinoJson@6.21.3

@@ -15,6 +15,8 @@ A comprehensive ESP32 application with web interface for scanning, connecting to
 - 🔧 **Configurable**: Easy-to-modify configuration file for customization
 - 📊 **Activity Logging**: Comprehensive logging system with timestamped entries
 - 🎯 **One-Click Commands**: Execute saved commands instantly with a single click
+- 📶 **WiFi Access Point Mode**: Automatic AP mode for easy WiFi configuration without hardcoding credentials
+- 🔄 **Auto WiFi Setup**: Captive portal for seamless WiFi network configuration
 
 ## 🎮 Try the Demo
 
@@ -99,11 +101,19 @@ Open `Sketch` → `Include Library` → `Manage Libraries` and install:
 ### 4. Configure and Upload Sketch
 
 1. Open `esp32_ble_controller.ino`
-2. Update WiFi credentials:
-   ```cpp
-   const char* ssid = "YOUR_WIFI_SSID";
-   const char* password = "YOUR_WIFI_PASSWORD";
-   ```
+2. **WiFi Configuration (Choose one method):**
+   
+   **Method A: Automatic Setup (Recommended)**
+   - No configuration needed! The ESP32 will create an Access Point for WiFi setup
+   - Skip to step 3
+   
+   **Method B: Manual Configuration**
+   - Open `config.h` and update WiFi credentials:
+     ```cpp
+     #define WIFI_SSID "YOUR_WIFI_SSID"
+     #define WIFI_PASSWORD "YOUR_WIFI_PASSWORD"
+     ```
+
 3. Select your ESP32 board and port
 4. Upload the sketch
 
@@ -111,6 +121,19 @@ Open `Sketch` → `Include Library` → `Manage Libraries` and install:
 
 ### 1. Initial Setup
 
+**If using Automatic WiFi Setup:**
+1. Power on your ESP32
+2. Open Serial Monitor (115200 baud) to see status messages
+3. If no WiFi is configured, the ESP32 will create an Access Point:
+   - Network: `ESP32-BLE-Controller`
+   - Password: `12345678`
+4. Connect your device to this network
+5. Open a browser and go to `http://192.168.4.1`
+6. Use the WiFi setup page to scan and connect to your network
+7. The ESP32 will restart and connect to your WiFi
+8. Check your router or Serial Monitor for the new IP address
+
+**If using Manual WiFi Setup:**
 1. Power on your ESP32
 2. Open Serial Monitor (115200 baud) to see the IP address
 3. Connect to the web interface using the displayed IP address

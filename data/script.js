@@ -6,6 +6,7 @@ let isScanning = false;
 
 // Initialize the application
 document.addEventListener('DOMContentLoaded', function() {
+    checkWiFiStatus();
     initWebSocket();
     loadSavedDevices();
     loadSavedCommands();
@@ -483,4 +484,57 @@ window.onclick = function(event) {
     if (event.target === modal) {
         closeModal();
     }
+}
+
+// WiFi Status Management
+function checkWiFiStatus() {
+    // Skip WiFi check in demo mode
+    if (window.location.port === '12000') {
+        return;
+    }
+    
+    fetch('/api/wifi/status')
+        .then(response => response.json())
+        .then(data => {
+            if (data.isAPMode) {
+                showAPModeNotification();
+            }
+        })
+        .catch(error => {
+            console.log('WiFi status check failed:', error);
+        });
+}
+
+function showAPModeNotification() {
+    // Create AP mode notification
+    const notification = document.createElement('div');
+    notification.id = 'ap-notification';
+    notification.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+        color: white;
+        padding: 15px;
+        text-align: center;
+        z-index: 1000;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+        font-weight: 500;
+    `;
+    
+    notification.innerHTML = `
+        <div style="max-width: 800px; margin: 0 auto;">
+            🔧 <strong>WiFi Setup Mode</strong> - 
+            This ESP32 is not connected to WiFi. 
+            <a href="/wifi-config.html" style="color: #fff; text-decoration: underline; margin-left: 10px;">
+                Configure WiFi Settings
+            </a>
+        </div>
+    `;
+    
+    document.body.insertBefore(notification, document.body.firstChild);
+    
+    // Adjust main content margin
+    document.querySelector('.container').style.marginTop = '60px';
 }

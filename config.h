@@ -21,6 +21,14 @@
 // WiFi reconnection attempts
 #define WIFI_MAX_RETRIES 5
 
+// Access Point Settings (for initial setup when WiFi fails)
+#define AP_SSID "ESP32-BLE-Controller"
+#define AP_PASSWORD "12345678"  // Minimum 8 characters for WPA2
+#define AP_TIMEOUT 300000       // 5 minutes timeout for AP mode
+#define AP_IP_ADDRESS IPAddress(192, 168, 4, 1)
+#define AP_GATEWAY IPAddress(192, 168, 4, 1)
+#define AP_SUBNET IPAddress(255, 255, 255, 0)
+
 // =============================================================================
 // WEB SERVER CONFIGURATION
 // =============================================================================

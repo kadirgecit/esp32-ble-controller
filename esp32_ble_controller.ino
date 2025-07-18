@@ -9,10 +9,16 @@
 #include <SPIFFS.h>
 #include <ESPAsyncWebServer.h>
 #include <AsyncTCP.h>
+#include <DNSServer.h>
+#include <Preferences.h>
+#include "config.h"
 
-// WiFi credentials - Update these
-const char* ssid = "YOUR_WIFI_SSID";
-const char* password = "YOUR_WIFI_PASSWORD";
+// WiFi and AP variables
+bool isAPMode = false;
+bool wifiConfigured = false;
+unsigned long apStartTime = 0;
+DNSServer dnsServer;
+Preferences preferences;
 
 // Web server
 AsyncWebServer server(80);
@@ -67,32 +73,155 @@ class MyClientCallback : public BLEClientCallbacks {
     }
 };
 
+// WiFi Management Functions
+bool setupWiFi() {
+    // Try to get saved credentials first
+    String savedSSID = preferences.getString("ssid", "");
+    String savedPassword = preferences.getString("password", "");
+    
+    // If no saved credentials, try default ones
+    if (savedSSID.length() == 0) {
+        savedSSID = WIFI_SSID;
+        savedPassword = WIFI_PASSWORD;
+    }
+    
+    // Skip if still using default placeholder values
+    if (savedSSID == "YOUR_WIFI_SSID" || savedSSID.length() == 0) {
+        Serial.println("No WiFi credentials configured");
+        return false;
+    }
+    
+    Serial.println("Attempting to connect to WiFi: " + savedSSID);
+    WiFi.mode(WIFI_STA);
+    WiFi.begin(savedSSID.c_str(), savedPassword.c_str());
+    
+    unsigned long startTime = millis();
+    while (WiFi.status() != WL_CONNECTED && millis() - startTime < WIFI_TIMEOUT) {
+        delay(500);
+        Serial.print(".");
+        SET_STATUS_LED(!digitalRead(STATUS_LED_PIN)); // Blink LED
+    }
+    
+    if (WiFi.status() == WL_CONNECTED) {
+        Serial.println("\nWiFi connected successfully!");
+        Serial.print("IP address: ");
+        Serial.println(WiFi.localIP());
+        Serial.print("Access the web interface at: http://");
+        Serial.println(WiFi.localIP());
+        SET_STATUS_LED(LOW); // Turn off LED
+        wifiConfigured = true;
+        return true;
+    } else {
+        Serial.println("\nWiFi connection failed");
+        return false;
+    }
+}
+
+void setupAccessPoint() {
+    Serial.println("Setting up Access Point...");
+    
+    WiFi.mode(WIFI_AP);
+    WiFi.softAPConfig(AP_IP_ADDRESS, AP_GATEWAY, AP_SUBNET);
+    WiFi.softAP(AP_SSID, AP_PASSWORD);
+    
+    Serial.println("Access Point started");
+    Serial.print("AP SSID: ");
+    Serial.println(AP_SSID);
+    Serial.print("AP Password: ");
+    Serial.println(AP_PASSWORD);
+    Serial.print("AP IP address: ");
+    Serial.println(WiFi.softAPIP());
+    Serial.println("Connect to the AP and go to http://192.168.4.1 to configure WiFi");
+    
+    // Start DNS server for captive portal
+    dnsServer.start(53, "*", AP_IP_ADDRESS);
+    
+    isAPMode = true;
+    apStartTime = millis();
+    SET_STATUS_LED(HIGH); // Keep LED on in AP mode
+}
+
+void handleWiFiConfig(AsyncWebServerRequest *request) {
+    if (request->hasParam("ssid", true) && request->hasParam("password", true)) {
+        String newSSID = request->getParam("ssid", true)->value();
+        String newPassword = request->getParam("password", true)->value();
+        
+        Serial.println("Received WiFi credentials:");
+        Serial.println("SSID: " + newSSID);
+        
+        // Save credentials to preferences
+        preferences.putString("ssid", newSSID);
+        preferences.putString("password", newPassword);
+        
+        request->send(200, "application/json", "{\"status\":\"credentials_saved\",\"message\":\"WiFi credentials saved. Restarting...\"}");
+        
+        delay(2000);
+        ESP.restart();
+    } else {
+        request->send(400, "application/json", "{\"error\":\"Missing SSID or password\"}");
+    }
+}
+
+void handleWiFiStatus(AsyncWebServerRequest *request) {
+    String response = "{";
+    response += "\"isAPMode\":" + String(isAPMode ? "true" : "false") + ",";
+    response += "\"wifiConnected\":" + String(WiFi.status() == WL_CONNECTED ? "true" : "false") + ",";
+    response += "\"currentSSID\":\"" + WiFi.SSID() + "\",";
+    response += "\"ipAddress\":\"" + WiFi.localIP().toString() + "\",";
+    response += "\"apIP\":\"" + WiFi.softAPIP().toString() + "\"";
+    response += "}";
+    request->send(200, "application/json", response);
+}
+
+void handleWiFiScan(AsyncWebServerRequest *request) {
+    int n = WiFi.scanNetworks();
+    String response = "{\"networks\":[";
+    
+    for (int i = 0; i < n; i++) {
+        if (i > 0) response += ",";
+        response += "{";
+        response += "\"ssid\":\"" + WiFi.SSID(i) + "\",";
+        response += "\"rssi\":" + String(WiFi.RSSI(i)) + ",";
+        response += "\"encryption\":" + String(WiFi.encryptionType(i));
+        response += "}";
+    }
+    
+    response += "]}";
+    request->send(200, "application/json", response);
+}
+
 void setup() {
-    Serial.begin(115200);
+    Serial.begin(SERIAL_BAUD_RATE);
+    Serial.println("\n=== ESP32 BLE Controller Starting ===");
+    
+    // Initialize status LED
+    INIT_STATUS_LED();
+    SET_STATUS_LED(HIGH);
+    
+    // Initialize preferences for WiFi credentials storage
+    preferences.begin("wifi-config", false);
     
     // Initialize SPIFFS
     if (!SPIFFS.begin(true)) {
         Serial.println("SPIFFS Mount Failed");
         return;
     }
+    Serial.println("SPIFFS initialized successfully");
     
     // Initialize BLE
-    BLEDevice::init("ESP32_BLE_Controller");
+    BLEDevice::init(BLE_DEVICE_NAME);
     pBLEScan = BLEDevice::getScan();
     pBLEScan->setAdvertisedDeviceCallbacks(new MyAdvertisedDeviceCallbacks());
-    pBLEScan->setInterval(1349);
-    pBLEScan->setWindow(449);
-    pBLEScan->setActiveScan(true);
+    pBLEScan->setInterval(BLE_SCAN_INTERVAL);
+    pBLEScan->setWindow(BLE_SCAN_WINDOW);
+    pBLEScan->setActiveScan(BLE_ACTIVE_SCAN);
+    Serial.println("BLE initialized successfully");
     
-    // Connect to WiFi
-    WiFi.begin(ssid, password);
-    while (WiFi.status() != WL_CONNECTED) {
-        delay(1000);
-        Serial.println("Connecting to WiFi...");
+    // Try to connect to WiFi
+    if (!setupWiFi()) {
+        Serial.println("WiFi connection failed, starting Access Point mode");
+        setupAccessPoint();
     }
-    Serial.println("WiFi connected!");
-    Serial.print("IP address: ");
-    Serial.println(WiFi.localIP());
     
     // Setup WebSocket
     ws.onEvent(onWsEvent);
@@ -114,13 +243,39 @@ void setup() {
     server.on("/api/commands", HTTP_POST, handleSaveCommand);
     server.on("/api/commands", HTTP_DELETE, handleDeleteCommand);
     
+    // WiFi configuration endpoints
+    server.on("/api/wifi/config", HTTP_POST, handleWiFiConfig);
+    server.on("/api/wifi/status", HTTP_GET, handleWiFiStatus);
+    server.on("/api/wifi/scan", HTTP_GET, handleWiFiScan);
+    
+    // Captive portal redirect for AP mode
+    server.onNotFound([](AsyncWebServerRequest *request) {
+        if (isAPMode) {
+            request->redirect("http://192.168.4.1/");
+        } else {
+            request->send(404, "text/plain", "Not found");
+        }
+    });
+    
     server.begin();
     Serial.println("HTTP server started");
 }
 
 void loop() {
     ws.cleanupClients();
-    delay(10);
+    
+    // Handle DNS server in AP mode
+    if (isAPMode) {
+        dnsServer.processNextRequest();
+        
+        // Check AP timeout
+        if (millis() - apStartTime > AP_TIMEOUT) {
+            Serial.println("AP mode timeout reached, restarting...");
+            ESP.restart();
+        }
+    }
+    
+    delay(MAIN_LOOP_DELAY);
 }
 
 void onWsEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType type,
