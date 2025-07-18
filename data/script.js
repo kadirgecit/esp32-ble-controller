@@ -17,8 +17,17 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // WebSocket connection
 function initWebSocket() {
-    // Check if we're running in demo mode
-    const isDemo = window.location.port === '12000';
+    // Check if we're running in demo mode (port 12000 or contains 'demo' or 'runtime')
+    const isDemo = window.location.port === '12000' || 
+                   window.location.hostname === 'localhost' ||
+                   window.location.hostname.includes('runtime') ||
+                   window.location.hostname.includes('demo');
+    
+    console.log('Demo mode check:', {
+        port: window.location.port,
+        hostname: window.location.hostname,
+        isDemo: isDemo
+    });
     
     if (isDemo) {
         log('Running in demo mode - WebSocket disabled', 'info');
@@ -40,7 +49,14 @@ function initWebSocket() {
     
     websocket.onclose = function(event) {
         log('WebSocket disconnected', 'error');
-        setTimeout(initWebSocket, 3000); // Reconnect after 3 seconds
+        // Only reconnect if not in demo mode
+        const isDemo = window.location.port === '12000' || 
+                       window.location.hostname === 'localhost' ||
+                       window.location.hostname.includes('runtime') ||
+                       window.location.hostname.includes('demo');
+        if (!isDemo) {
+            setTimeout(initWebSocket, 3000); // Reconnect after 3 seconds
+        }
     };
     
     websocket.onerror = function(error) {

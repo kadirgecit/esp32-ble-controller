@@ -33,6 +33,10 @@ class BLEControllerHandler(SimpleHTTPRequestHandler):
             self.handle_get_devices()
         elif parsed_path.path == '/api/commands':
             self.handle_get_commands()
+        elif parsed_path.path == '/api/wifi/status':
+            self.handle_wifi_status()
+        elif parsed_path.path == '/ws':
+            self.handle_websocket()
         else:
             super().do_GET()
     
@@ -218,6 +222,24 @@ class BLEControllerHandler(SimpleHTTPRequestHandler):
                 self.send_json_response({"error": "Invalid index"}, 400)
         except FileNotFoundError:
             self.send_json_response({"error": "Commands file not found"}, 404)
+    
+    def handle_wifi_status(self):
+        """Handle WiFi status request - demo mode is not in AP mode"""
+        response = {
+            "isAPMode": False,
+            "wifiConnected": True,
+            "currentSSID": "Demo-Network",
+            "ipAddress": "127.0.0.1",
+            "apIP": ""
+        }
+        self.send_json_response(response)
+    
+    def handle_websocket(self):
+        """Handle WebSocket connection attempt - return 404 for demo mode"""
+        self.send_response(404)
+        self.send_header('Content-type', 'text/plain')
+        self.end_headers()
+        self.wfile.write(b'WebSocket not supported in demo mode')
 
 if __name__ == "__main__":
     # Start HTTP server
